@@ -1,6 +1,9 @@
 <?php
 
+use App\Http\Controllers\Admin\AssetCategoryController as AdminAssetCategoryController;
+use App\Http\Controllers\Admin\AssetController as AdminAssetController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\DepartmentController as AdminDepartmentController;
 use App\Http\Controllers\Admin\PermissionManagementController as AdminPermissionManagementController;
 use App\Http\Controllers\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Admin\RoleManagementController as AdminRoleManagementController;
@@ -14,6 +17,7 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\DashboardRedirectController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Manager\AssetRequestReviewController as ManagerAssetRequestReviewController;
 use App\Http\Controllers\Manager\DashboardController as ManagerDashboardController;
 use App\Http\Controllers\Manager\ReportController as ManagerReportController;
@@ -65,6 +69,13 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])
         ->name('notifications.read');
 
+    Route::get('/profile', [ProfileController::class, 'edit'])
+        ->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])
+        ->name('profile.update');
+    Route::patch('/profile/password', [ProfileController::class, 'updatePassword'])
+        ->name('profile.password.update');
+
     Route::prefix('admin')
         ->name('admin.')
         ->middleware('role:Super Admin')
@@ -82,6 +93,72 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
             Route::post('/users', [AdminUserManagementController::class, 'store'])
                 ->middleware('permission:users.create')
                 ->name('users.store');
+            Route::get('/users/{managedUser}/edit', [AdminUserManagementController::class, 'edit'])
+                ->middleware('permission:users.update')
+                ->name('users.edit');
+            Route::patch('/users/{managedUser}', [AdminUserManagementController::class, 'update'])
+                ->middleware('permission:users.update')
+                ->name('users.update');
+            Route::patch('/users/{managedUser}/deactivate', [AdminUserManagementController::class, 'deactivate'])
+                ->middleware('permission:users.delete')
+                ->name('users.deactivate');
+
+            Route::get('/departments', [AdminDepartmentController::class, 'index'])
+                ->middleware('permission:departments.view')
+                ->name('departments.index');
+            Route::get('/departments/create', [AdminDepartmentController::class, 'create'])
+                ->middleware('permission:departments.create')
+                ->name('departments.create');
+            Route::post('/departments', [AdminDepartmentController::class, 'store'])
+                ->middleware('permission:departments.create')
+                ->name('departments.store');
+            Route::get('/departments/{department}/edit', [AdminDepartmentController::class, 'edit'])
+                ->middleware('permission:departments.update')
+                ->name('departments.edit');
+            Route::patch('/departments/{department}', [AdminDepartmentController::class, 'update'])
+                ->middleware('permission:departments.update')
+                ->name('departments.update');
+            Route::delete('/departments/{department}', [AdminDepartmentController::class, 'destroy'])
+                ->middleware('permission:departments.delete')
+                ->name('departments.destroy');
+
+            Route::get('/asset-categories', [AdminAssetCategoryController::class, 'index'])
+                ->middleware('permission:asset-categories.view')
+                ->name('asset-categories.index');
+            Route::get('/asset-categories/create', [AdminAssetCategoryController::class, 'create'])
+                ->middleware('permission:asset-categories.create')
+                ->name('asset-categories.create');
+            Route::post('/asset-categories', [AdminAssetCategoryController::class, 'store'])
+                ->middleware('permission:asset-categories.create')
+                ->name('asset-categories.store');
+            Route::get('/asset-categories/{assetCategory}/edit', [AdminAssetCategoryController::class, 'edit'])
+                ->middleware('permission:asset-categories.update')
+                ->name('asset-categories.edit');
+            Route::patch('/asset-categories/{assetCategory}', [AdminAssetCategoryController::class, 'update'])
+                ->middleware('permission:asset-categories.update')
+                ->name('asset-categories.update');
+            Route::delete('/asset-categories/{assetCategory}', [AdminAssetCategoryController::class, 'destroy'])
+                ->middleware('permission:asset-categories.delete')
+                ->name('asset-categories.destroy');
+
+            Route::get('/assets', [AdminAssetController::class, 'index'])
+                ->middleware('permission:assets.view')
+                ->name('assets.index');
+            Route::get('/assets/create', [AdminAssetController::class, 'create'])
+                ->middleware('permission:assets.create')
+                ->name('assets.create');
+            Route::post('/assets', [AdminAssetController::class, 'store'])
+                ->middleware('permission:assets.create')
+                ->name('assets.store');
+            Route::get('/assets/{asset}/edit', [AdminAssetController::class, 'edit'])
+                ->middleware('permission:assets.update')
+                ->name('assets.edit');
+            Route::patch('/assets/{asset}', [AdminAssetController::class, 'update'])
+                ->middleware('permission:assets.update')
+                ->name('assets.update');
+            Route::delete('/assets/{asset}', [AdminAssetController::class, 'destroy'])
+                ->middleware('permission:assets.delete')
+                ->name('assets.destroy');
 
             Route::get('/roles', [AdminRoleManagementController::class, 'index'])
                 ->middleware('permission:roles.view')
@@ -146,12 +223,24 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
                 ->group(function (): void {
                     Route::get('/stock', [AdminReportController::class, 'stock'])
                         ->name('stock');
+                    Route::get('/stock/export', [AdminReportController::class, 'exportStock'])
+                        ->middleware('permission:reports.export')
+                        ->name('stock.export');
                     Route::get('/requests', [AdminReportController::class, 'requests'])
                         ->name('requests');
+                    Route::get('/requests/export', [AdminReportController::class, 'exportRequests'])
+                        ->middleware('permission:reports.export')
+                        ->name('requests.export');
                     Route::get('/issues', [AdminReportController::class, 'issues'])
                         ->name('issues');
+                    Route::get('/issues/export', [AdminReportController::class, 'exportIssues'])
+                        ->middleware('permission:reports.export')
+                        ->name('issues.export');
                     Route::get('/low-stock', [AdminReportController::class, 'lowStock'])
                         ->name('low-stock');
+                    Route::get('/low-stock/export', [AdminReportController::class, 'exportLowStock'])
+                        ->middleware('permission:reports.export')
+                        ->name('low-stock.export');
                 });
         });
 
@@ -182,12 +271,24 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
                 ->group(function (): void {
                     Route::get('/stock', [ManagerReportController::class, 'stock'])
                         ->name('stock');
+                    Route::get('/stock/export', [ManagerReportController::class, 'exportStock'])
+                        ->middleware('permission:reports.export')
+                        ->name('stock.export');
                     Route::get('/requests', [ManagerReportController::class, 'requests'])
                         ->name('requests');
+                    Route::get('/requests/export', [ManagerReportController::class, 'exportRequests'])
+                        ->middleware('permission:reports.export')
+                        ->name('requests.export');
                     Route::get('/issues', [ManagerReportController::class, 'issues'])
                         ->name('issues');
+                    Route::get('/issues/export', [ManagerReportController::class, 'exportIssues'])
+                        ->middleware('permission:reports.export')
+                        ->name('issues.export');
                     Route::get('/low-stock', [ManagerReportController::class, 'lowStock'])
                         ->name('low-stock');
+                    Route::get('/low-stock/export', [ManagerReportController::class, 'exportLowStock'])
+                        ->middleware('permission:reports.export')
+                        ->name('low-stock.export');
                 });
         });
 

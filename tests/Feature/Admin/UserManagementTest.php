@@ -87,6 +87,72 @@ it('lets admins create a manager account and connects the department manager slo
     expect($this->operationsDepartment->fresh()->manager_user_id)->toBe($manager->id);
 });
 
+it('lets admins update a managed account and reassign its manager slot', function () {
+    $manager = User::factory()->create([
+        'department_id' => $this->itDepartment->id,
+        'status' => UserStatusEnum::ACTIVE,
+    ]);
+    $manager->assignRole('Department Manager');
+
+    $this->itDepartment->forceFill([
+        'manager_user_id' => $manager->id,
+    ])->save();
+
+    $this->actingAs($this->admin)
+        ->patch(route('admin.users.update', $manager), [
+            'name' => 'Operations Lead',
+            'email' => $manager->email,
+            'role' => 'Department Manager',
+            'department_id' => $this->operationsDepartment->id,
+            'status' => UserStatusEnum::ACTIVE->value,
+            'password' => '',
+            'password_confirmation' => '',
+            'notes' => 'Transferred to operations.',
+        ])
+        ->assertRedirect(route('admin.users.edit', $manager));
+
+    $manager->refresh();
+
+    expect($manager->name)->toBe('Operations Lead');
+    expect($manager->department_id)->toBe($this->operationsDepartment->id);
+    expect($manager->hasRole('Department Manager'))->toBeTrue();
+    expect($this->itDepartment->fresh()->manager_user_id)->toBeNull();
+    expect($this->operationsDepartment->fresh()->manager_user_id)->toBe($manager->id);
+
+    $this->assertDatabaseHas('notification_logs', [
+        'user_id' => $manager->id,
+        'type' => 'account.updated',
+        'title' => 'Your account was updated',
+    ]);
+});
+
+it('lets admins deactivate a managed account and clears any manager slot', function () {
+    $manager = User::factory()->create([
+        'department_id' => $this->operationsDepartment->id,
+        'status' => UserStatusEnum::ACTIVE,
+    ]);
+    $manager->assignRole('Department Manager');
+
+    $this->operationsDepartment->forceFill([
+        'manager_user_id' => $manager->id,
+    ])->save();
+
+    $this->actingAs($this->admin)
+        ->patch(route('admin.users.deactivate', $manager))
+        ->assertRedirect(route('admin.users.index'));
+
+    expect($manager->fresh()->status)->toBe(UserStatusEnum::INACTIVE);
+    expect($this->operationsDepartment->fresh()->manager_user_id)->toBeNull();
+});
+
+it('does not let admins deactivate their own account from team management', function () {
+    $this->actingAs($this->admin)
+        ->from(route('admin.users.index'))
+        ->patch(route('admin.users.deactivate', $this->admin))
+        ->assertRedirect(route('admin.users.index'))
+        ->assertSessionHasErrors('user');
+});
+
 it('blocks staff users from opening the admin user workspace', function () {
     $this->actingAs($this->staff)
         ->get(route('admin.users.index'))

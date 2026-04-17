@@ -7,6 +7,9 @@
         $items = [
             ['label' => 'Dashboard', 'route' => 'admin.dashboard', 'pattern' => 'admin.dashboard'],
             ['label' => 'Team', 'route' => 'admin.users.index', 'pattern' => 'admin.users.*'],
+            ['label' => 'Departments', 'route' => 'admin.departments.index', 'pattern' => 'admin.departments.*'],
+            ['label' => 'Categories', 'route' => 'admin.asset-categories.index', 'pattern' => 'admin.asset-categories.*'],
+            ['label' => 'Assets', 'route' => 'admin.assets.index', 'pattern' => 'admin.assets.*'],
             ['label' => 'Access', 'route' => 'admin.roles.index', 'pattern' => ['admin.roles.*', 'admin.permissions.*']],
             ['label' => 'Requests', 'route' => 'admin.requests.index', 'pattern' => 'admin.requests.*'],
             ['label' => 'Issues', 'route' => 'admin.issues.index', 'pattern' => 'admin.issues.*'],
@@ -21,6 +24,7 @@
             ['label' => 'Approvals', 'route' => 'manager.requests.index', 'pattern' => 'manager.requests.*'],
             ['label' => 'Reports', 'route' => 'manager.reports.stock', 'pattern' => 'manager.reports.*'],
             ['label' => 'Low Stock', 'route' => 'manager.reports.low-stock', 'pattern' => 'manager.reports.low-stock'],
+            ['label' => 'Notifications', 'route' => 'notifications.index', 'pattern' => 'notifications.*'],
         ];
     } else {
         $roleLabel = 'Staff';
@@ -78,9 +82,14 @@
     </nav>
 
     <div class="rounded-[28px] border border-orange-500/20 bg-orange-500/10 p-5">
-        <p class="text-sm font-extrabold text-white">Workspace</p>
-        <p class="mt-2 text-sm leading-6 text-slate-300">
-            Use this menu to move between the modules available to your role.
-        </p>
+        <p class="text-sm font-extrabold text-white">Quick Access</p>
+        <div class="mt-4 grid gap-3">
+            <a href="{{ route('notifications.index') }}" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-slate-200 transition hover:border-orange-300/40 hover:bg-white/10">
+                Notifications
+            </a>
+            <a href="{{ route('profile.edit') }}" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-slate-200 transition hover:border-orange-300/40 hover:bg-white/10">
+                Profile & Settings
+            </a>
+        </div>
     </div>
 </aside>

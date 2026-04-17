@@ -3,9 +3,11 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\UserStatusEnum;
+use App\Models\Department;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\Validator;
 
 class StoreManagedUserRequest extends FormRequest
 {
@@ -35,6 +37,37 @@ class StoreManagedUserRequest extends FormRequest
             ))],
             'password' => ['required', 'confirmed', Password::min(8)],
             'notes' => ['nullable', 'string'],
+        ];
+    }
+
+    /**
+     * Configure post-validation checks.
+     *
+     * @return array<int, \Closure(Validator): void>
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                if ($this->input('role') !== 'Department Manager') {
+                    return;
+                }
+
+                $departmentId = $this->integer('department_id');
+
+                if ($departmentId <= 0) {
+                    return;
+                }
+
+                $department = Department::query()->find($departmentId);
+
+                if ($department?->manager_user_id !== null) {
+                    $validator->errors()->add(
+                        'department_id',
+                        'The selected department already has a manager assigned.',
+                    );
+                }
+            },
         ];
     }
 

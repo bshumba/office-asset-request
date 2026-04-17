@@ -6,6 +6,8 @@
 @section('page-description', 'Monitor department requests, stock pressure, and approval activity from one workspace.')
 
 @section('content')
+    @include('partials.dashboard.date-filters', ['routeName' => 'manager.dashboard'])
+
     <section class="dashboard-hero">
         <div class="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <div class="max-w-3xl space-y-4">
@@ -15,6 +17,9 @@
                 </h2>
                 <p class="max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
                     Keep approvals moving, monitor current demand, and stay aware of stock pressure across your department.
+                </p>
+                <p class="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
+                    Showing metrics for {{ $rangeLabel }}
                 </p>
             </div>
 
@@ -77,7 +82,7 @@
                 <div class="rounded-3xl border border-slate-200 bg-slate-50 p-5">
                     <p class="text-sm font-extrabold text-slate-900">Reports</p>
                     <p class="mt-4 text-sm leading-6 text-slate-600">
-                        Department stock, request, issue, and low-stock reports are available from this dashboard.
+                        Department stock, request, issue, and low-stock reports are available from this dashboard, including CSV export.
                     </p>
                 </div>
             </div>

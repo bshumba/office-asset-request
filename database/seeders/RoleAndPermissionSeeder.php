@@ -95,6 +95,7 @@ class RoleAndPermissionSeeder extends Seeder
             'issues.view',
             'returns.view',
             'reports.view',
+            'reports.export',
         ];
     }
 

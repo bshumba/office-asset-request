@@ -16,6 +16,8 @@
         );
     @endphp
 
+    @include('partials.dashboard.date-filters', ['routeName' => 'admin.dashboard'])
+
     <section class="dashboard-hero">
         <div class="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <div class="max-w-3xl space-y-4">
@@ -25,6 +27,9 @@
                 </h2>
                 <p class="max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
                     Review requests, stock movement, issued assets, team setup, permissions, and reporting from a single admin view.
+                </p>
+                <p class="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
+                    Showing metrics for {{ $rangeLabel }}
                 </p>
             </div>
 
@@ -63,6 +68,11 @@
                     <p class="text-xs font-extrabold uppercase tracking-[0.28em] text-orange-500">Team</p>
                     <p class="mt-3 text-lg font-extrabold text-slate-950">User Management</p>
                     <p class="mt-2 text-sm leading-6 text-slate-500">Create staff and manager accounts, assign departments, and review account status.</p>
+                </a>
+                <a href="{{ route('admin.assets.index') }}" class="rounded-3xl border border-slate-200 bg-slate-50 p-5 transition hover:border-orange-200 hover:bg-orange-50/50">
+                    <p class="text-xs font-extrabold uppercase tracking-[0.28em] text-orange-500">Inventory</p>
+                    <p class="mt-3 text-lg font-extrabold text-slate-950">Assets & Categories</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-500">Maintain departments, categories, and asset records from the same admin workspace.</p>
                 </a>
                 <a href="{{ route('admin.roles.index') }}" class="rounded-3xl border border-slate-200 bg-slate-50 p-5 transition hover:border-orange-200 hover:bg-orange-50/50">
                     <p class="text-xs font-extrabold uppercase tracking-[0.28em] text-orange-500">Access</p>
@@ -204,6 +214,8 @@
         >
             <div class="grid gap-3">
                 <a href="{{ route('admin.users.index') }}" class="secondary-button justify-start">Team Management</a>
+                <a href="{{ route('admin.departments.index') }}" class="secondary-button justify-start">Departments</a>
+                <a href="{{ route('admin.assets.index') }}" class="secondary-button justify-start">Asset Catalog</a>
                 <a href="{{ route('admin.roles.index') }}" class="secondary-button justify-start">Access Control</a>
                 <a href="{{ route('admin.requests.index') }}" class="secondary-button justify-start">Request Inbox</a>
                 <a href="{{ route('admin.issues.index') }}" class="secondary-button justify-start">Issued Assets</a>
