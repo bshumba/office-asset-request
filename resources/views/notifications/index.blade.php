@@ -29,9 +29,9 @@
     </section>
 
     @if (session('status'))
-        <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+        <x-ui.alert>
             {{ session('status') }}
-        </div>
+        </x-ui.alert>
     @endif
 
     <section class="grid gap-5 md:grid-cols-3">
@@ -45,12 +45,10 @@
         description="Only notifications for your account appear here."
     >
         @if ($notifications->isEmpty())
-            <div class="rounded-[28px] border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center">
-                <p class="text-lg font-extrabold text-slate-900">No notifications yet</p>
-                <p class="mt-3 text-sm leading-6 text-slate-500">
-                    Workflow activity will start appearing here as soon as requests and approvals move.
-                </p>
-            </div>
+            <x-ui.empty-state
+                title="No notifications yet"
+                description="Workflow activity will appear here as requests, approvals, issues, and returns move."
+            />
         @else
             <div class="space-y-4">
                 @foreach ($notifications as $notification)

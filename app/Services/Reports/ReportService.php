@@ -12,6 +12,7 @@ use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportService
 {
@@ -184,6 +185,248 @@ class ReportService
     }
 
     /**
+     * Export the admin stock report as CSV.
+     *
+     * @param  array<string, mixed>  $filters
+     */
+    public function exportStockCsvForAdmin(array $filters): StreamedResponse
+    {
+        $assets = $this->stockQuery(
+            filters: $filters,
+            departmentId: isset($filters['department_id']) ? (int) $filters['department_id'] : null,
+            forceDepartmentScope: false,
+        )->orderBy('department_id')->orderBy('name')->get();
+
+        return $this->csvResponse(
+            'stock-report.csv',
+            ['Asset', 'Code', 'Department', 'Status', 'Available', 'Total', 'Reorder Level', 'Category', 'Brand', 'Model'],
+            $assets->map(static fn (Asset $asset): array => [
+                $asset->name,
+                $asset->asset_code,
+                $asset->department?->name ?? 'Unassigned',
+                (string) str($asset->status->value)->headline(),
+                $asset->quantity_available,
+                $asset->quantity_total,
+                $asset->reorder_level,
+                $asset->category?->name ?? 'Uncategorized',
+                $asset->brand ?? '',
+                $asset->model ?? '',
+            ])->all(),
+        );
+    }
+
+    /**
+     * Export the manager stock report as CSV.
+     *
+     * @param  array<string, mixed>  $filters
+     */
+    public function exportStockCsvForManager(User $manager, array $filters): StreamedResponse
+    {
+        $assets = $this->stockQuery(
+            filters: $filters,
+            departmentId: $manager->department_id,
+            forceDepartmentScope: true,
+        )->orderBy('name')->get();
+
+        return $this->csvResponse(
+            'department-stock-report.csv',
+            ['Asset', 'Code', 'Department', 'Status', 'Available', 'Total', 'Reorder Level', 'Category', 'Brand', 'Model'],
+            $assets->map(static fn (Asset $asset): array => [
+                $asset->name,
+                $asset->asset_code,
+                $asset->department?->name ?? 'Unassigned',
+                (string) str($asset->status->value)->headline(),
+                $asset->quantity_available,
+                $asset->quantity_total,
+                $asset->reorder_level,
+                $asset->category?->name ?? 'Uncategorized',
+                $asset->brand ?? '',
+                $asset->model ?? '',
+            ])->all(),
+        );
+    }
+
+    /**
+     * Export the admin request report as CSV.
+     *
+     * @param  array<string, mixed>  $filters
+     */
+    public function exportRequestCsvForAdmin(array $filters): StreamedResponse
+    {
+        $requests = $this->requestQuery(
+            filters: $filters,
+            departmentId: isset($filters['department_id']) ? (int) $filters['department_id'] : null,
+            forceDepartmentScope: false,
+        )->latest()->get();
+
+        return $this->csvResponse(
+            'request-report.csv',
+            ['Request Number', 'Requester', 'Department', 'Asset', 'Status', 'Priority', 'Requested Qty', 'Approved Qty', 'Created At', 'Needed By', 'Reason'],
+            $requests->map(static fn (AssetRequest $request): array => [
+                $request->request_number,
+                $request->user?->name ?? 'Unknown user',
+                $request->department?->name ?? 'Unassigned',
+                $request->asset?->name ?? 'Missing asset',
+                (string) str($request->status->value)->headline(),
+                (string) str($request->priority->value)->headline(),
+                $request->quantity_requested,
+                $request->quantity_approved ?? '',
+                $request->created_at?->format('Y-m-d H:i:s') ?? '',
+                $request->needed_by_date?->format('Y-m-d') ?? '',
+                $request->reason,
+            ])->all(),
+        );
+    }
+
+    /**
+     * Export the manager request report as CSV.
+     *
+     * @param  array<string, mixed>  $filters
+     */
+    public function exportRequestCsvForManager(User $manager, array $filters): StreamedResponse
+    {
+        $requests = $this->requestQuery(
+            filters: $filters,
+            departmentId: $manager->department_id,
+            forceDepartmentScope: true,
+        )->latest()->get();
+
+        return $this->csvResponse(
+            'department-request-report.csv',
+            ['Request Number', 'Requester', 'Department', 'Asset', 'Status', 'Priority', 'Requested Qty', 'Approved Qty', 'Created At', 'Needed By', 'Reason'],
+            $requests->map(static fn (AssetRequest $request): array => [
+                $request->request_number,
+                $request->user?->name ?? 'Unknown user',
+                $request->department?->name ?? 'Unassigned',
+                $request->asset?->name ?? 'Missing asset',
+                (string) str($request->status->value)->headline(),
+                (string) str($request->priority->value)->headline(),
+                $request->quantity_requested,
+                $request->quantity_approved ?? '',
+                $request->created_at?->format('Y-m-d H:i:s') ?? '',
+                $request->needed_by_date?->format('Y-m-d') ?? '',
+                $request->reason,
+            ])->all(),
+        );
+    }
+
+    /**
+     * Export the admin issue report as CSV.
+     *
+     * @param  array<string, mixed>  $filters
+     */
+    public function exportIssueCsvForAdmin(array $filters): StreamedResponse
+    {
+        $issues = $this->issueQuery(
+            filters: $filters,
+            departmentId: isset($filters['department_id']) ? (int) $filters['department_id'] : null,
+            forceDepartmentScope: false,
+        )->latest('issued_at')->get();
+
+        return $this->csvResponse(
+            'issue-report.csv',
+            ['Request Number', 'Asset', 'Issued To', 'Department', 'Status', 'Quantity Issued', 'Outstanding Quantity', 'Issued At', 'Expected Return'],
+            $issues->map(static fn (AssetIssue $issue): array => [
+                $issue->assetRequest?->request_number ?? '',
+                $issue->asset?->name ?? 'Missing asset',
+                $issue->issuedToUser?->name ?? 'Unknown user',
+                $issue->department?->name ?? 'Unassigned',
+                (string) str($issue->status->value)->headline(),
+                $issue->quantity_issued,
+                $issue->outstandingQuantity(),
+                $issue->issued_at?->format('Y-m-d H:i:s') ?? '',
+                $issue->expected_return_date?->format('Y-m-d') ?? '',
+            ])->all(),
+        );
+    }
+
+    /**
+     * Export the manager issue report as CSV.
+     *
+     * @param  array<string, mixed>  $filters
+     */
+    public function exportIssueCsvForManager(User $manager, array $filters): StreamedResponse
+    {
+        $issues = $this->issueQuery(
+            filters: $filters,
+            departmentId: $manager->department_id,
+            forceDepartmentScope: true,
+        )->latest('issued_at')->get();
+
+        return $this->csvResponse(
+            'department-issue-report.csv',
+            ['Request Number', 'Asset', 'Issued To', 'Department', 'Status', 'Quantity Issued', 'Outstanding Quantity', 'Issued At', 'Expected Return'],
+            $issues->map(static fn (AssetIssue $issue): array => [
+                $issue->assetRequest?->request_number ?? '',
+                $issue->asset?->name ?? 'Missing asset',
+                $issue->issuedToUser?->name ?? 'Unknown user',
+                $issue->department?->name ?? 'Unassigned',
+                (string) str($issue->status->value)->headline(),
+                $issue->quantity_issued,
+                $issue->outstandingQuantity(),
+                $issue->issued_at?->format('Y-m-d H:i:s') ?? '',
+                $issue->expected_return_date?->format('Y-m-d') ?? '',
+            ])->all(),
+        );
+    }
+
+    /**
+     * Export the admin low-stock report as CSV.
+     *
+     * @param  array<string, mixed>  $filters
+     */
+    public function exportLowStockCsvForAdmin(array $filters): StreamedResponse
+    {
+        $assets = $this->lowStockQuery(
+            filters: $filters,
+            departmentId: isset($filters['department_id']) ? (int) $filters['department_id'] : null,
+            forceDepartmentScope: false,
+        )->orderBy('quantity_available')->orderBy('name')->get();
+
+        return $this->csvResponse(
+            'low-stock-report.csv',
+            ['Asset', 'Code', 'Department', 'Status', 'Available', 'Reorder Level', 'Category'],
+            $assets->map(static fn (Asset $asset): array => [
+                $asset->name,
+                $asset->asset_code,
+                $asset->department?->name ?? 'Unassigned',
+                (string) str($asset->status->value)->headline(),
+                $asset->quantity_available,
+                $asset->reorder_level,
+                $asset->category?->name ?? 'Uncategorized',
+            ])->all(),
+        );
+    }
+
+    /**
+     * Export the manager low-stock report as CSV.
+     *
+     * @param  array<string, mixed>  $filters
+     */
+    public function exportLowStockCsvForManager(User $manager, array $filters): StreamedResponse
+    {
+        $assets = $this->lowStockQuery(
+            filters: $filters,
+            departmentId: $manager->department_id,
+            forceDepartmentScope: true,
+        )->orderBy('quantity_available')->orderBy('name')->get();
+
+        return $this->csvResponse(
+            'department-low-stock-report.csv',
+            ['Asset', 'Code', 'Department', 'Status', 'Available', 'Reorder Level', 'Category'],
+            $assets->map(static fn (Asset $asset): array => [
+                $asset->name,
+                $asset->asset_code,
+                $asset->department?->name ?? 'Unassigned',
+                (string) str($asset->status->value)->headline(),
+                $asset->quantity_available,
+                $asset->reorder_level,
+                $asset->category?->name ?? 'Uncategorized',
+            ])->all(),
+        );
+    }
+
+    /**
      * @param  array<string, mixed>  $filters
      * @return array{
      *     assets: LengthAwarePaginator,
@@ -198,10 +441,7 @@ class ReportService
         bool $forceDepartmentScope,
         bool $includeDepartments,
     ): array {
-        $query = Asset::query()->with(['category', 'department']);
-
-        $this->applyDepartmentScope($query, $departmentId, $forceDepartmentScope);
-        $this->applyAssetFilters($query, $filters);
+        $query = $this->stockQuery($filters, $departmentId, $forceDepartmentScope);
 
         return [
             'assets' => (clone $query)
@@ -246,10 +486,7 @@ class ReportService
         bool $forceDepartmentScope,
         bool $includeDepartments,
     ): array {
-        $query = AssetRequest::query()->with(['asset.category', 'department', 'user']);
-
-        $this->applyDepartmentScope($query, $departmentId, $forceDepartmentScope);
-        $this->applyRequestFilters($query, $filters);
+        $query = $this->requestQuery($filters, $departmentId, $forceDepartmentScope);
 
         return [
             'requests' => (clone $query)
@@ -293,10 +530,7 @@ class ReportService
         bool $forceDepartmentScope,
         bool $includeDepartments,
     ): array {
-        $query = AssetIssue::query()->with(['asset', 'assetRequest', 'department', 'issuedToUser', 'returns']);
-
-        $this->applyDepartmentScope($query, $departmentId, $forceDepartmentScope);
-        $this->applyIssueFilters($query, $filters);
+        $query = $this->issueQuery($filters, $departmentId, $forceDepartmentScope);
 
         return [
             'issues' => (clone $query)
@@ -340,12 +574,7 @@ class ReportService
         bool $forceDepartmentScope,
         bool $includeDepartments,
     ): array {
-        $query = Asset::query()
-            ->with(['category', 'department'])
-            ->whereColumn('quantity_available', '<=', 'reorder_level');
-
-        $this->applyDepartmentScope($query, $departmentId, $forceDepartmentScope);
-        $this->applyAssetFilters($query, $filters);
+        $query = $this->lowStockQuery($filters, $departmentId, $forceDepartmentScope);
 
         return [
             'assets' => (clone $query)
@@ -373,6 +602,60 @@ class ReportService
             'departments' => $includeDepartments ? $this->departments() : collect(),
             'filters' => $filters,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     */
+    private function stockQuery(array $filters, ?int $departmentId, bool $forceDepartmentScope): Builder
+    {
+        $query = Asset::query()->with(['category', 'department']);
+
+        $this->applyDepartmentScope($query, $departmentId, $forceDepartmentScope);
+        $this->applyAssetFilters($query, $filters);
+
+        return $query;
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     */
+    private function requestQuery(array $filters, ?int $departmentId, bool $forceDepartmentScope): Builder
+    {
+        $query = AssetRequest::query()->with(['asset.category', 'department', 'user']);
+
+        $this->applyDepartmentScope($query, $departmentId, $forceDepartmentScope);
+        $this->applyRequestFilters($query, $filters);
+
+        return $query;
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     */
+    private function issueQuery(array $filters, ?int $departmentId, bool $forceDepartmentScope): Builder
+    {
+        $query = AssetIssue::query()->with(['asset', 'assetRequest', 'department', 'issuedToUser', 'returns']);
+
+        $this->applyDepartmentScope($query, $departmentId, $forceDepartmentScope);
+        $this->applyIssueFilters($query, $filters);
+
+        return $query;
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     */
+    private function lowStockQuery(array $filters, ?int $departmentId, bool $forceDepartmentScope): Builder
+    {
+        $query = Asset::query()
+            ->with(['category', 'department'])
+            ->whereColumn('quantity_available', '<=', 'reorder_level');
+
+        $this->applyDepartmentScope($query, $departmentId, $forceDepartmentScope);
+        $this->applyAssetFilters($query, $filters);
+
+        return $query;
     }
 
     private function applyDepartmentScope(Builder $query, ?int $departmentId, bool $forceDepartmentScope): void
@@ -496,5 +779,30 @@ class ReportService
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
+    }
+
+    /**
+     * @param  array<int, string>  $headers
+     * @param  array<int, array<int, string|int>>  $rows
+     */
+    private function csvResponse(string $filename, array $headers, array $rows): StreamedResponse
+    {
+        return response()->streamDownload(function () use ($headers, $rows): void {
+            $stream = fopen('php://output', 'w');
+
+            if ($stream === false) {
+                return;
+            }
+
+            fputcsv($stream, $headers);
+
+            foreach ($rows as $row) {
+                fputcsv($stream, $row);
+            }
+
+            fclose($stream);
+        }, $filename, [
+            'Content-Type' => 'text/csv',
+        ]);
     }
 }

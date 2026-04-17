@@ -6,6 +6,8 @@
 @section('page-description', 'A personal view focused on creating requests, tracking approvals, and understanding what is currently assigned to this account.')
 
 @section('content')
+    @include('partials.dashboard.date-filters', ['routeName' => 'staff.dashboard'])
+
     <section class="dashboard-hero">
         <div class="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <div class="max-w-3xl space-y-4">
@@ -15,6 +17,9 @@
                 </h2>
                 <p class="max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
                     Submit new requests, follow approval progress, and track the assets currently issued to your account.
+                </p>
+                <p class="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
+                    Showing metrics for {{ $rangeLabel }}
                 </p>
             </div>
 

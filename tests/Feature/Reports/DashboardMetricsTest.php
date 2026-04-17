@@ -12,6 +12,7 @@ use App\Models\AssetIssue;
 use App\Models\AssetRequest;
 use App\Models\Department;
 use App\Models\User;
+use App\Services\Reports\DashboardMetricsService;
 use Database\Seeders\RoleAndPermissionSeeder;
 
 beforeEach(function () {
@@ -323,4 +324,63 @@ it('shows own request and issue counts for staff users', function () {
         ->assertSeeText('3')
         ->assertSeeText('2')
         ->assertSeeText('1');
+});
+
+it('filters admin dashboard metrics by the selected activity window', function () {
+    $recentAsset = Asset::query()->create([
+        'asset_category_id' => $this->category->id,
+        'department_id' => $this->itDepartment->id,
+        'name' => 'Recent Asset',
+        'slug' => 'recent-asset',
+        'asset_code' => 'AST-FLT-100',
+        'unit_type' => AssetUnitTypeEnum::PIECE,
+        'quantity_total' => 2,
+        'quantity_available' => 2,
+        'reorder_level' => 1,
+        'track_serial' => false,
+        'status' => AssetStatusEnum::ACTIVE,
+    ]);
+
+    $oldAsset = Asset::query()->create([
+        'asset_category_id' => $this->category->id,
+        'department_id' => $this->itDepartment->id,
+        'name' => 'Old Asset',
+        'slug' => 'old-asset',
+        'asset_code' => 'AST-FLT-200',
+        'unit_type' => AssetUnitTypeEnum::PIECE,
+        'quantity_total' => 2,
+        'quantity_available' => 2,
+        'reorder_level' => 1,
+        'track_serial' => false,
+        'status' => AssetStatusEnum::ACTIVE,
+    ]);
+
+    $recentAsset->forceFill([
+        'created_at' => now(),
+        'updated_at' => now(),
+    ])->saveQuietly();
+
+    $oldAsset->forceFill([
+        'created_at' => now()->subMonths(2),
+        'updated_at' => now()->subMonths(2),
+    ])->saveQuietly();
+
+    $metrics = app(DashboardMetricsService::class)->forAdmin([
+        'from' => now()->subDay()->toDateString(),
+        'to' => now()->toDateString(),
+    ]);
+
+    expect(collect($metrics['stats'])->firstWhere('label', 'Tracked Assets')['value'])->toBe(1);
+    expect($metrics['rangeLabel'])->not->toBe('All time');
+});
+
+it('shows the selected date range on the manager dashboard', function () {
+    $this->actingAs($this->manager)
+        ->get(route('manager.dashboard', [
+            'from' => now()->subWeek()->toDateString(),
+            'to' => now()->toDateString(),
+        ]))
+        ->assertOk()
+        ->assertSeeText('Current range')
+        ->assertSeeText('Department Overview');
 });

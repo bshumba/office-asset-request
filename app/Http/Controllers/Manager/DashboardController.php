@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Manager;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Dashboard\DashboardFilterRequest;
 use App\Models\User;
 use App\Services\Reports\DashboardMetricsService;
-use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -13,7 +13,10 @@ class DashboardController extends Controller
     /**
      * Show the manager dashboard.
      */
-    public function __invoke(Request $request, DashboardMetricsService $dashboardMetricsService): View
+    public function __invoke(
+        DashboardFilterRequest $request,
+        DashboardMetricsService $dashboardMetricsService,
+    ): View
     {
         $user = $request->user();
 
@@ -21,6 +24,6 @@ class DashboardController extends Controller
             abort(403);
         }
 
-        return view('manager.dashboard', $dashboardMetricsService->forManager($user));
+        return view('manager.dashboard', $dashboardMetricsService->forManager($user, $request->filters()));
     }
 }

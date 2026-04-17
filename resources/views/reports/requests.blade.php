@@ -9,6 +9,12 @@
     <section class="dashboard-hero space-y-6">
         @include('partials.reports.navigation', ['routePrefix' => $routePrefix, 'scopeLabel' => $scopeLabel])
 
+        @if (session('status'))
+            <x-ui.alert>
+                {{ session('status') }}
+            </x-ui.alert>
+        @endif
+
         <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div class="max-w-3xl space-y-4">
                 <span class="shell-chip">Request Visibility</span>
@@ -25,6 +31,13 @@
                 <p class="mt-3 max-w-xs text-sm leading-6 text-slate-600">
                     Combine search, dates, priorities, and statuses to narrow the view.
                 </p>
+                @can('reports.export')
+                    <div class="mt-5">
+                        <a href="{{ route($routePrefix.'.requests.export', request()->query()) }}" class="secondary-button w-full justify-center">
+                            Export CSV
+                        </a>
+                    </div>
+                @endcan
             </div>
         </div>
     </section>
@@ -141,48 +154,51 @@
             title="Request table"
             description="Review requester, asset, status, and quantity at a glance."
         >
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-slate-200 text-sm">
-                    <thead class="text-left text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500">
-                        <tr>
-                            <th class="px-4 py-3">Request</th>
-                            <th class="px-4 py-3">Requester</th>
-                            <th class="px-4 py-3">Asset</th>
-                            <th class="px-4 py-3">Status</th>
-                            <th class="px-4 py-3">Priority</th>
-                            <th class="px-4 py-3">Qty</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100 text-slate-700">
-                        @forelse ($requests as $assetRequest)
-                            <tr class="bg-white">
-                                <td class="px-4 py-4">
-                                    <p class="font-extrabold text-slate-950">{{ $assetRequest->request_number }}</p>
-                                    <p class="mt-1 text-xs text-slate-500">{{ $assetRequest->created_at?->format('d M Y') }}</p>
-                                </td>
-                                <td class="px-4 py-4">
-                                    <p class="font-bold">{{ $assetRequest->user?->name ?? 'Unknown user' }}</p>
-                                    <p class="mt-1 text-xs text-slate-500">{{ $assetRequest->department?->name ?? 'Unassigned' }}</p>
-                                </td>
-                                <td class="px-4 py-4">{{ $assetRequest->asset?->name ?? 'Missing asset' }}</td>
-                                <td class="px-4 py-4">{{ str($assetRequest->status->value)->headline() }}</td>
-                                <td class="px-4 py-4">{{ str($assetRequest->priority->value)->headline() }}</td>
-                                <td class="px-4 py-4 font-bold">{{ $assetRequest->quantity_approved ?? $assetRequest->quantity_requested }} / {{ $assetRequest->quantity_requested }}</td>
-                            </tr>
-                        @empty
+            @if ($requests->isEmpty())
+                <x-ui.empty-state
+                    title="No requests matched these filters"
+                    description="Reset the filters or expand the date range to review more request activity."
+                    action-label="Reset Filters"
+                    action-url="{{ route($routePrefix.'.requests') }}"
+                />
+            @else
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200 text-sm">
+                        <thead class="text-left text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500">
                             <tr>
-                                <td colspan="6" class="px-4 py-10 text-center text-sm text-slate-500">
-                                    No requests matched the current report filters.
-                                </td>
+                                <th class="px-4 py-3">Request</th>
+                                <th class="px-4 py-3">Requester</th>
+                                <th class="px-4 py-3">Asset</th>
+                                <th class="px-4 py-3">Status</th>
+                                <th class="px-4 py-3">Priority</th>
+                                <th class="px-4 py-3">Qty</th>
                             </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-slate-700">
+                            @foreach ($requests as $assetRequest)
+                                <tr class="bg-white">
+                                    <td class="px-4 py-4">
+                                        <p class="font-extrabold text-slate-950">{{ $assetRequest->request_number }}</p>
+                                        <p class="mt-1 text-xs text-slate-500">{{ $assetRequest->created_at?->format('d M Y') }}</p>
+                                    </td>
+                                    <td class="px-4 py-4">
+                                        <p class="font-bold">{{ $assetRequest->user?->name ?? 'Unknown user' }}</p>
+                                        <p class="mt-1 text-xs text-slate-500">{{ $assetRequest->department?->name ?? 'Unassigned' }}</p>
+                                    </td>
+                                    <td class="px-4 py-4">{{ $assetRequest->asset?->name ?? 'Missing asset' }}</td>
+                                    <td class="px-4 py-4">{{ str($assetRequest->status->value)->headline() }}</td>
+                                    <td class="px-4 py-4">{{ str($assetRequest->priority->value)->headline() }}</td>
+                                    <td class="px-4 py-4 font-bold">{{ $assetRequest->quantity_approved ?? $assetRequest->quantity_requested }} / {{ $assetRequest->quantity_requested }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
 
-            <div class="mt-6">
-                {{ $requests->links() }}
-            </div>
+                <div class="mt-6">
+                    {{ $requests->links() }}
+                </div>
+            @endif
         </x-ui.panel>
     </section>
 @endsection

@@ -24,20 +24,6 @@
             </div>
 
             <div class="hidden items-center gap-3 md:flex">
-                <label class="relative block">
-                    <span class="sr-only">Search</span>
-                    <input
-                        type="text"
-                        class="w-72 rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm text-slate-700 shadow-sm outline-none placeholder:text-slate-400 focus:border-orange-400 focus:ring-4 focus:ring-orange-100"
-                        placeholder="Search module shell..."
-                    >
-                    <span class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-400">
-                        <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                            <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 014.346 8.872l3.64 3.64a.75.75 0 11-1.06 1.06l-3.64-3.64A5.5 5.5 0 119 3.5zm0 1.5a4 4 0 100 8 4 4 0 000-8z" clip-rule="evenodd" />
-                        </svg>
-                    </span>
-                </label>
-
                 <a href="{{ route('notifications.index') }}" class="relative inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-700 shadow-sm">
                     Notifications
                     @if ($unreadNotifications > 0)
@@ -45,6 +31,10 @@
                             {{ $unreadNotifications }}
                         </span>
                     @endif
+                </a>
+
+                <a href="{{ route('profile.edit') }}" class="secondary-button h-11 px-4">
+                    Settings
                 </a>
 
                 <div class="flex items-center gap-3 rounded-[24px] border border-slate-200 bg-white px-4 py-2 shadow-sm">

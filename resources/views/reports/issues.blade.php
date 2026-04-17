@@ -9,6 +9,12 @@
     <section class="dashboard-hero space-y-6">
         @include('partials.reports.navigation', ['routePrefix' => $routePrefix, 'scopeLabel' => $scopeLabel])
 
+        @if (session('status'))
+            <x-ui.alert>
+                {{ session('status') }}
+            </x-ui.alert>
+        @endif
+
         <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div class="max-w-3xl space-y-4">
                 <span class="shell-chip">Issue Visibility</span>
@@ -16,8 +22,7 @@
                     Track issued assets, outstanding quantities, and return progress without leaving the dashboard shell.
                 </h2>
                 <p class="max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
-                    This report becomes especially useful once you start recording returns because it turns issue records into
-                    a practical accountability view instead of a hidden operational detail.
+                    Review issue records, outstanding quantities, and return progress from one accountability view.
                 </p>
             </div>
 
@@ -26,6 +31,13 @@
                 <p class="mt-3 max-w-xs text-sm leading-6 text-slate-600">
                     Search by asset, request number, or assignee to see where issued inventory is sitting right now.
                 </p>
+                @can('reports.export')
+                    <div class="mt-5">
+                        <a href="{{ route($routePrefix.'.issues.export', request()->query()) }}" class="secondary-button w-full justify-center">
+                            Export CSV
+                        </a>
+                    </div>
+                @endcan
             </div>
         </div>
     </section>
@@ -44,7 +56,7 @@
     <section class="grid gap-6 xl:grid-cols-[0.88fr_1.12fr]">
         <x-ui.panel
             title="Issue filters"
-            description="This report is service-driven too, so the request only validates filters and the service owns the query rules."
+            description="Filter by asset, assignee, date, and issue status without leaving the report."
         >
             <form method="GET" action="{{ route($routePrefix.'.issues') }}" class="grid gap-4 md:grid-cols-2">
                 <div class="md:col-span-2">
@@ -124,47 +136,50 @@
 
         <x-ui.panel
             title="Issue table"
-            description="Outstanding quantity is included directly here so the report stays useful after partial returns are introduced."
+            description="Review issued quantities and open return balances at a glance."
         >
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-slate-200 text-sm">
-                    <thead class="text-left text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500">
-                        <tr>
-                            <th class="px-4 py-3">Request</th>
-                            <th class="px-4 py-3">Asset</th>
-                            <th class="px-4 py-3">Issued To</th>
-                            <th class="px-4 py-3">Status</th>
-                            <th class="px-4 py-3">Qty</th>
-                            <th class="px-4 py-3">Issued At</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100 text-slate-700">
-                        @forelse ($issues as $issue)
-                            <tr class="bg-white">
-                                <td class="px-4 py-4">
-                                    <p class="font-extrabold text-slate-950">{{ $issue->assetRequest?->request_number ?? 'No request' }}</p>
-                                    <p class="mt-1 text-xs text-slate-500">{{ $issue->department?->name ?? 'Unassigned' }}</p>
-                                </td>
-                                <td class="px-4 py-4">{{ $issue->asset?->name ?? 'Missing asset' }}</td>
-                                <td class="px-4 py-4">{{ $issue->issuedToUser?->name ?? 'Unknown user' }}</td>
-                                <td class="px-4 py-4">{{ str($issue->status->value)->headline() }}</td>
-                                <td class="px-4 py-4 font-bold">{{ $issue->outstandingQuantity() }} / {{ $issue->quantity_issued }}</td>
-                                <td class="px-4 py-4">{{ $issue->issued_at?->format('d M Y') ?? 'Not set' }}</td>
-                            </tr>
-                        @empty
+            @if ($issues->isEmpty())
+                <x-ui.empty-state
+                    title="No issue records matched these filters"
+                    description="Reset the filters or widen the date range to review more issue activity."
+                    action-label="Reset Filters"
+                    action-url="{{ route($routePrefix.'.issues') }}"
+                />
+            @else
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200 text-sm">
+                        <thead class="text-left text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500">
                             <tr>
-                                <td colspan="6" class="px-4 py-10 text-center text-sm text-slate-500">
-                                    No issue records matched the current report filters.
-                                </td>
+                                <th class="px-4 py-3">Request</th>
+                                <th class="px-4 py-3">Asset</th>
+                                <th class="px-4 py-3">Issued To</th>
+                                <th class="px-4 py-3">Status</th>
+                                <th class="px-4 py-3">Qty</th>
+                                <th class="px-4 py-3">Issued At</th>
                             </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-slate-700">
+                            @foreach ($issues as $issue)
+                                <tr class="bg-white">
+                                    <td class="px-4 py-4">
+                                        <p class="font-extrabold text-slate-950">{{ $issue->assetRequest?->request_number ?? 'No request' }}</p>
+                                        <p class="mt-1 text-xs text-slate-500">{{ $issue->department?->name ?? 'Unassigned' }}</p>
+                                    </td>
+                                    <td class="px-4 py-4">{{ $issue->asset?->name ?? 'Missing asset' }}</td>
+                                    <td class="px-4 py-4">{{ $issue->issuedToUser?->name ?? 'Unknown user' }}</td>
+                                    <td class="px-4 py-4">{{ str($issue->status->value)->headline() }}</td>
+                                    <td class="px-4 py-4 font-bold">{{ $issue->outstandingQuantity() }} / {{ $issue->quantity_issued }}</td>
+                                    <td class="px-4 py-4">{{ $issue->issued_at?->format('d M Y') ?? 'Not set' }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
 
-            <div class="mt-6">
-                {{ $issues->links() }}
-            </div>
+                <div class="mt-6">
+                    {{ $issues->links() }}
+                </div>
+            @endif
         </x-ui.panel>
     </section>
 @endsection

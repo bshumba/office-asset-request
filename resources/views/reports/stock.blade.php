@@ -9,6 +9,12 @@
     <section class="dashboard-hero space-y-6">
         @include('partials.reports.navigation', ['routePrefix' => $routePrefix, 'scopeLabel' => $scopeLabel])
 
+        @if (session('status'))
+            <x-ui.alert>
+                {{ session('status') }}
+            </x-ui.alert>
+        @endif
+
         <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div class="max-w-3xl space-y-4">
                 <span class="shell-chip">Inventory Visibility</span>
@@ -25,6 +31,13 @@
                 <p class="mt-3 max-w-xs text-sm leading-6 text-slate-600">
                     {{ $showDepartmentFilter ? 'Use filters to move across departments and status states.' : 'This report is already locked to your department scope.' }}
                 </p>
+                @can('reports.export')
+                    <div class="mt-5">
+                        <a href="{{ route($routePrefix.'.stock.export', request()->query()) }}" class="secondary-button w-full justify-center">
+                            Export CSV
+                        </a>
+                    </div>
+                @endcan
             </div>
         </div>
     </section>
@@ -103,45 +116,48 @@
             title="Stock table"
             description="Review current stock levels across the selected scope."
         >
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-slate-200 text-sm">
-                    <thead class="text-left text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500">
-                        <tr>
-                            <th class="px-4 py-3">Asset</th>
-                            <th class="px-4 py-3">Department</th>
-                            <th class="px-4 py-3">Status</th>
-                            <th class="px-4 py-3">Available</th>
-                            <th class="px-4 py-3">Reorder</th>
-                            <th class="px-4 py-3">Category</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100 text-slate-700">
-                        @forelse ($assets as $asset)
-                            <tr class="bg-white">
-                                <td class="px-4 py-4">
-                                    <p class="font-extrabold text-slate-950">{{ $asset->name }}</p>
-                                    <p class="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{{ $asset->asset_code }}</p>
-                                </td>
-                                <td class="px-4 py-4">{{ $asset->department?->name ?? 'Unassigned' }}</td>
-                                <td class="px-4 py-4">{{ str($asset->status->value)->headline() }}</td>
-                                <td class="px-4 py-4 font-bold">{{ $asset->quantity_available }} / {{ $asset->quantity_total }}</td>
-                                <td class="px-4 py-4">{{ $asset->reorder_level }}</td>
-                                <td class="px-4 py-4">{{ $asset->category?->name ?? 'Uncategorized' }}</td>
-                            </tr>
-                        @empty
+            @if ($assets->isEmpty())
+                <x-ui.empty-state
+                    title="No assets matched these filters"
+                    description="Try broadening the search terms or reset the filters to see the full stock catalog."
+                    action-label="Reset Filters"
+                    action-url="{{ route($routePrefix.'.stock') }}"
+                />
+            @else
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200 text-sm">
+                        <thead class="text-left text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500">
                             <tr>
-                                <td colspan="6" class="px-4 py-10 text-center text-sm text-slate-500">
-                                    No assets matched the current stock filters.
-                                </td>
+                                <th class="px-4 py-3">Asset</th>
+                                <th class="px-4 py-3">Department</th>
+                                <th class="px-4 py-3">Status</th>
+                                <th class="px-4 py-3">Available</th>
+                                <th class="px-4 py-3">Reorder</th>
+                                <th class="px-4 py-3">Category</th>
                             </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-slate-700">
+                            @foreach ($assets as $asset)
+                                <tr class="bg-white">
+                                    <td class="px-4 py-4">
+                                        <p class="font-extrabold text-slate-950">{{ $asset->name }}</p>
+                                        <p class="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{{ $asset->asset_code }}</p>
+                                    </td>
+                                    <td class="px-4 py-4">{{ $asset->department?->name ?? 'Unassigned' }}</td>
+                                    <td class="px-4 py-4">{{ str($asset->status->value)->headline() }}</td>
+                                    <td class="px-4 py-4 font-bold">{{ $asset->quantity_available }} / {{ $asset->quantity_total }}</td>
+                                    <td class="px-4 py-4">{{ $asset->reorder_level }}</td>
+                                    <td class="px-4 py-4">{{ $asset->category?->name ?? 'Uncategorized' }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
 
-            <div class="mt-6">
-                {{ $assets->links() }}
-            </div>
+                <div class="mt-6">
+                    {{ $assets->links() }}
+                </div>
+            @endif
         </x-ui.panel>
     </section>
 @endsection

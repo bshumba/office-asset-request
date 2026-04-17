@@ -17,6 +17,22 @@
 
                 <main class="flex-1 px-4 pb-8 pt-6 sm:px-6 lg:px-8">
                     <div class="mx-auto flex w-full max-w-7xl flex-col gap-6">
+                        @if (session('error'))
+                            <x-ui.alert tone="error" title="Something needs attention">
+                                {{ session('error') }}
+                            </x-ui.alert>
+                        @endif
+
+                        @if ($errors->any())
+                            <x-ui.alert tone="error" title="Please review the highlighted details">
+                                <ul class="space-y-1">
+                                    @foreach ($errors->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </x-ui.alert>
+                        @endif
+
                         @yield('content')
                     </div>
                 </main>
