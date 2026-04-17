@@ -1,0 +1,102 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap');
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans: 'Nunito', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+    --color-shell-bg: #f3f4f6;
+    --color-shell-panel: #ffffff;
+    --color-shell-ink: #0f172a;
+    --color-shell-muted: #64748b;
+    --color-shell-line: #dbe2ea;
+    --color-shell-brand: #f97316;
+    --color-shell-brand-deep: #c2410c;
+    --color-shell-rail: #0f172a;
+    --color-shell-rail-soft: #1e293b;
+}
+
+@layer base {
+    html {
+        @apply scroll-smooth;
+    }
+
+    body {
+        @apply min-h-screen bg-[--color-shell-bg] font-sans text-[--color-shell-ink] antialiased;
+    }
+}
+
+@layer components {
+    .shell-card {
+        @apply rounded-[28px] border border-[--color-shell-line] bg-[--color-shell-panel] p-6 shadow-[0_20px_60px_-40px_rgba(15,23,42,0.35)];
+    }
+
+    .shell-card-muted {
+        @apply rounded-[28px] border border-slate-200/80 bg-slate-50/90 p-6 shadow-[0_20px_50px_-45px_rgba(15,23,42,0.3)];
+    }
+
+    .shell-chip {
+        @apply inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-orange-700;
+    }
+
+    .nav-item {
+        @apply flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold text-slate-300 transition duration-200 hover:bg-white/8 hover:text-white;
+    }
+
+    .nav-item-active {
+        @apply bg-gradient-to-r from-orange-500 to-amber-400 text-slate-950 shadow-[0_18px_40px_-24px_rgba(249,115,22,0.75)];
+    }
+
+    .nav-item-disabled {
+        @apply cursor-not-allowed opacity-60 hover:bg-transparent hover:text-slate-300;
+    }
+
+    .auth-panel {
+        @apply relative overflow-hidden rounded-[28px] border border-[--color-shell-line] bg-[--color-shell-panel] p-8 shadow-[0_20px_60px_-40px_rgba(15,23,42,0.35)] sm:p-10;
+    }
+
+    .page-eyebrow {
+        @apply text-xs font-extrabold uppercase tracking-[0.35em] text-orange-600;
+    }
+
+    .page-title {
+        @apply text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl;
+    }
+
+    .page-copy {
+        @apply text-sm leading-7 text-slate-500 sm:text-base;
+    }
+
+    .dashboard-hero {
+        @apply relative overflow-hidden rounded-[32px] bg-[radial-gradient(circle_at_top_right,_rgba(251,146,60,0.35),_transparent_35%),linear-gradient(135deg,#fff7ed_0%,#ffffff_48%,#f8fafc_100%)] p-8 shadow-[0_24px_60px_-45px_rgba(15,23,42,0.4)] ring-1 ring-white/70;
+    }
+
+    .form-input-shell {
+        @apply mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition duration-200 placeholder:text-slate-400 focus:border-orange-400 focus:ring-4 focus:ring-orange-100;
+    }
+
+    .primary-button {
+        @apply inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-orange-500 to-amber-400 px-5 py-3 text-sm font-bold text-slate-950 shadow-[0_16px_35px_-18px_rgba(249,115,22,0.8)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_45px_-18px_rgba(249,115,22,0.8)] focus:outline-none focus:ring-4 focus:ring-orange-200;
+    }
+
+    .secondary-button {
+        @apply inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition duration-200 hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-slate-200;
+    }
+}
+
+@layer utilities {
+    .grid-pattern {
+        background-image: linear-gradient(rgba(148, 163, 184, 0.14) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(148, 163, 184, 0.14) 1px, transparent 1px);
+        background-size: 24px 24px;
+    }
+
+    .glow-orb {
+        filter: blur(70px);
+        opacity: 0.65;
+    }
+}

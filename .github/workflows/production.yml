@@ -1,0 +1,262 @@
+name: office-asset-request-production
+
+on:
+  push:
+    branches:
+      - production
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test And Build Checks
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: office_asset_request_ci
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: office_asset_request_ci
+      DB_USERNAME: root
+      DB_PASSWORD: root
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: bcmath, mbstring, pdo, pdo_mysql, sockets, zip
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Prepare environment file
+        run: |
+          cp .env.example .env
+          php -r "
+            \$path = '.env';
+            \$contents = file_get_contents(\$path);
+            \$replacements = [
+                'DB_CONNECTION=sqlite' => 'DB_CONNECTION=mysql',
+                '# DB_HOST=127.0.0.1' => 'DB_HOST=127.0.0.1',
+                '# DB_PORT=3306' => 'DB_PORT=3306',
+                '# DB_DATABASE=laravel' => 'DB_DATABASE=office_asset_request_ci',
+                '# DB_USERNAME=root' => 'DB_USERNAME=root',
+                '# DB_PASSWORD=' => 'DB_PASSWORD=root',
+            ];
+            file_put_contents(\$path, str_replace(array_keys(\$replacements), array_values(\$replacements), \$contents));
+          "
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Prepare application
+        run: |
+          php artisan key:generate
+          php artisan migrate --force
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend assets
+        run: npm run build
+
+      - name: Run test suite
+        run: php artisan test
+
+  docker:
+    name: Build And Push Image
+    runs-on: ubuntu-latest
+    needs: test
+    env:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASS: ${{ secrets.DOCKER_PASS }}
+      APP_SLUG: ${{ secrets.APP_SLUG }}
+
+    steps:
+      - name: Check required secrets
+        run: |
+          set -e
+          for key in DOCKER_USERNAME DOCKER_PASS APP_SLUG; do
+            if [ -z "${!key}" ]; then
+              echo "Missing required secret: $key"
+              exit 1
+            fi
+          done
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASS }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/${{ secrets.APP_SLUG }}:${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/${{ secrets.APP_SLUG }}:production-latest
+
+  deployment:
+    name: Deploy To Production
+    runs-on: ubuntu-latest
+    needs: docker
+    environment: production
+    env:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASS: ${{ secrets.DOCKER_PASS }}
+      APP_NAME: ${{ secrets.APP_NAME }}
+      APP_SLUG: ${{ secrets.APP_SLUG }}
+      HOST: ${{ secrets.HOST }}
+      HOST_USER: ${{ secrets.HOST_USER }}
+      SSH_PASS: ${{ secrets.SSH_PASS }}
+      APP_KEY: ${{ secrets.APP_KEY }}
+      APP_URL: ${{ secrets.APP_URL }}
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_PORT: ${{ secrets.DB_PORT }}
+      DB_DATABASE_PRODUCTION: ${{ secrets.DB_DATABASE_PRODUCTION }}
+      DB_USERNAME_PRODUCTION: ${{ secrets.DB_USERNAME_PRODUCTION }}
+      DB_PASSWORD_PRODUCTION: ${{ secrets.DB_PASSWORD_PRODUCTION }}
+
+    steps:
+      - name: Check required secrets
+        run: |
+          set -e
+          for key in DOCKER_USERNAME DOCKER_PASS APP_NAME APP_SLUG HOST HOST_USER SSH_PASS APP_KEY APP_URL DB_HOST DB_PORT DB_DATABASE_PRODUCTION DB_USERNAME_PRODUCTION DB_PASSWORD_PRODUCTION; do
+            if [ -z "${!key}" ]; then
+              echo "Missing required secret: $key"
+              exit 1
+            fi
+          done
+
+      - name: Deploy container over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.HOST_USER }}
+          password: ${{ secrets.SSH_PASS }}
+          port: 22
+          script_stop: true
+          script: |
+            set -e
+
+            IMAGE="${{ secrets.DOCKER_USERNAME }}/${{ secrets.APP_SLUG }}:${{ github.sha }}"
+            CONTAINER="${{ secrets.APP_SLUG }}-production"
+            HOST_PORT="${{ secrets.APP_PORT }}"
+
+            if [ -z "$HOST_PORT" ]; then
+              HOST_PORT=9001
+            fi
+
+            APP_ROOT="/home/actions/apps/${{ secrets.APP_SLUG }}"
+            STORAGE_DIR="${APP_ROOT}/storage"
+
+            mkdir -p \
+              "${STORAGE_DIR}/app" \
+              "${STORAGE_DIR}/framework/cache/data" \
+              "${STORAGE_DIR}/framework/sessions" \
+              "${STORAGE_DIR}/framework/views" \
+              "${STORAGE_DIR}/logs"
+
+            printf '%s' "${{ secrets.DOCKER_PASS }}" | docker login --username "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+            docker pull "$IMAGE"
+
+            docker rm -f "$CONTAINER" || true
+
+            docker run \
+              -d \
+              --name "$CONTAINER" \
+              --restart unless-stopped \
+              -p "${HOST_PORT}:8001" \
+              -v "${STORAGE_DIR}:/var/www/html/storage" \
+              -e APP_NAME="${{ secrets.APP_NAME }}" \
+              -e APP_ENV=production \
+              -e APP_DEBUG=false \
+              -e APP_KEY="${{ secrets.APP_KEY }}" \
+              -e APP_URL="${{ secrets.APP_URL }}" \
+              -e LOG_CHANNEL=stack \
+              -e LOG_LEVEL=info \
+              -e DB_CONNECTION=mysql \
+              -e DB_HOST="${{ secrets.DB_HOST }}" \
+              -e DB_PORT="${{ secrets.DB_PORT }}" \
+              -e DB_DATABASE="${{ secrets.DB_DATABASE_PRODUCTION }}" \
+              -e DB_USERNAME="${{ secrets.DB_USERNAME_PRODUCTION }}" \
+              -e DB_PASSWORD="${{ secrets.DB_PASSWORD_PRODUCTION }}" \
+              -e SESSION_DRIVER=database \
+              -e CACHE_STORE=database \
+              -e QUEUE_CONNECTION=database \
+              -e MAIL_MAILER="${{ secrets.MAIL_MAILER }}" \
+              -e MAIL_SCHEME="${{ secrets.MAIL_SCHEME }}" \
+              -e MAIL_HOST="${{ secrets.MAIL_HOST }}" \
+              -e MAIL_PORT="${{ secrets.MAIL_PORT }}" \
+              -e MAIL_USERNAME="${{ secrets.MAIL_USERNAME }}" \
+              -e MAIL_PASSWORD="${{ secrets.MAIL_PASSWORD }}" \
+              -e MAIL_FROM_ADDRESS="${{ secrets.MAIL_FROM_ADDRESS }}" \
+              -e MAIL_FROM_NAME="${{ secrets.MAIL_FROM_NAME }}" \
+              -e AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
+              -e AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
+              -e AWS_DEFAULT_REGION="${{ secrets.AWS_DEFAULT_REGION }}" \
+              -e AWS_BUCKET="${{ secrets.AWS_BUCKET }}" \
+              -e AWS_USE_PATH_STYLE_ENDPOINT="${{ secrets.AWS_USE_PATH_STYLE_ENDPOINT }}" \
+              "$IMAGE"
+
+            for attempt in $(seq 1 30); do
+              STATUS="$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$CONTAINER")"
+
+              if [ "$STATUS" = "healthy" ] || [ "$STATUS" = "running" ]; then
+                echo "Container is healthy."
+                exit 0
+              fi
+
+              if [ "$STATUS" = "unhealthy" ] || [ "$STATUS" = "exited" ]; then
+                docker logs "$CONTAINER"
+                echo "Container failed to become healthy."
+                exit 1
+              fi
+
+              echo "Waiting for container health..."
+              sleep 5
+            done
+
+            docker logs "$CONTAINER"
+            echo "Timed out waiting for container health."
+            exit 1

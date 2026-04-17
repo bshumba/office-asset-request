@@ -1,0 +1,16 @@
+.env
+node_modules
+vendor
+public/build
+storage/logs
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/testing/*
+storage/framework/views/*
+bootstrap/cache/*
+database/database.sqlite
+.git
+.idea
+.vscode
+npm-debug.log
+yarn-error.log
